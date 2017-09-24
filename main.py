@@ -4,6 +4,8 @@ from vk_history_saver import VKHistorySaver
 ACCESS_TOKEN = 'my_access_token'
 FRIEND_ID = '12345678'
 OUTPUT_FILE = 'C:\\messages.txt'
+OUTPUT_DIR = 'C:\\messages.txt\\photos'
 
 vkhs = VKHistorySaver(ACCESS_TOKEN)
 vkhs.saveHistory(FRIEND_ID, OUTPUT_FILE)
+vkhs.saveHistoryPhotos(FRIEND_ID, OUTPUT_DIR)
