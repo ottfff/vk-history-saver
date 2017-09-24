@@ -10,8 +10,10 @@ import vk
 
 class VKHistorySaver:
     def __init__(self, accessToken):
-        session = vk.Session(access_token=accessToken)
-        self.api = vk.API(session)
+        self.accessToken = accessToken
+        self.session = vk.Session(access_token=accessToken)
+        self.api = vk.API(self.session)
+        self.frequency = 0.3
 
     def saveHistory(self, friend_id: str, dest):
         print('Начинаем сохранять историю сообщений c ' + str(friend_id) + ' в файл: ' + dest + '.')
@@ -23,16 +25,21 @@ class VKHistorySaver:
             os.makedirs(parent_dir)
         file = codecs.open(dest, 'a+', 'utf-8')
         messages = []
-        offset_i = msgs_cnt
-        while offset_i > 0:
-            offset_i -= 200
-            msg_hist = self.api.messages.getHistory(user_id=friend_id, v='5.67', count=200, offset=offset_i)
+        offset_i = msgs_cnt - (msgs_cnt % 200)
+        while offset_i >= 0:
+            try:
+                msg_hist = self.api.messages.getHistory(user_id=friend_id, v='5.67', count=200, offset=offset_i)
+            except:
+                self.session = vk.Session(self.accessToken)
+                self.api = vk.API(self.session)
+                msg_hist = self.api.messages.getHistory(user_id=friend_id, v='5.67', count=200, offset=offset_i)
             msgs = msg_hist['items']
             messages.extend(msgs)
-            time.sleep(0.3)
+            time.sleep(self.frequency)
             print('Обработано сообщений: ' + str(len(messages)))
             for msg in reversed(msgs):
                 file.write(str(msg) + '\n')
+            offset_i -= 200
         file.close()
 
     def saveHistoryPhotos(self, friend_id: str, dest):
@@ -43,15 +50,18 @@ class VKHistorySaver:
         if not pathlib.Path(dest).exists():
             os.makedirs(dest)
         messages = []
-        offset_i = msgs_cnt
+        offset_i = msgs_cnt - (msgs_cnt % 200)
         img_counter = 0
-        while offset_i > 0:
-            offset_i -= 200
-            if offset_i < 0: offset_i = 0
-            msg_hist = self.api.messages.getHistory(user_id=friend_id, v='5.67', count=200, offset=offset_i)
+        while offset_i >= 0:
+            try:
+                msg_hist = self.api.messages.getHistory(user_id=friend_id, v='5.67', count=200, offset=offset_i)
+            except:
+                self.session = vk.Session(self.accessToken)
+                self.api = vk.API(self.session)
+                msg_hist = self.api.messages.getHistory(user_id=friend_id, v='5.67', count=200, offset=offset_i)
             msgs = msg_hist['items']
             messages.extend(msgs)
-            time.sleep(0.3)
+            time.sleep(self.frequency)
             print('Обработано сообщений: ' + str(len(messages)))
             for msg in reversed(msgs):
                 attachments = msg.get('attachments', [])
@@ -68,6 +78,7 @@ class VKHistorySaver:
                         href = photo['photo_' + str(max_res)]
                         self.save_img(href, str(img_counter), dest)
                         img_counter += 1
+            offset_i -= 200
 
     def save_img(self, href, number, output_dir):
         img_name = '00000'[:-len(number)] + number + '_' + re.search('[^/]+$', href).group(0)
